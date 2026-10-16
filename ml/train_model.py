@@ -224,6 +224,9 @@ def main():
                                random_state=args.seed, n_jobs=-1),
         numeric, categorical,
     )
+    if len(np.unique(yc_train)) < 2:
+        raise SystemExit("The training split contains only one delayed/not-delayed class. Add more representative data or adjust the chronological split before training the classifier.")
+
     regressor.fit(X_train, yr_train)
     classifier.fit(X_train, yc_train)
 
