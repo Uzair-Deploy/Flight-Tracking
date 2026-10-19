@@ -45,8 +45,11 @@ def prepare_features(df: pd.DataFrame, schema: dict) -> tuple[pd.DataFrame, list
 
 
 def train(df_path: str, output_path: str):
+    # Quick sampling for faster testing (reduce to 500 rows)
     schema = load_feature_schema()
     df = pd.read_csv(df_path)
+    # Take a subset for speed
+    df = df.sample(min(500, len(df)), random_state=42).reset_index(drop=True)
 
     # Target
     if "arr_delay" not in df.columns:
@@ -58,41 +61,38 @@ def train(df_path: str, output_path: str):
         df = df[~df["status"].isin(["cancelled", "diverted"])].copy()
 
     df["arrival_delay_minutes"] = df["arrival_delay_minutes"].astype(float)
+    # Drop rows with missing target
+    df = df.dropna(subset=["arrival_delay_minutes"])
     # Classification target
     df["significant_delay"] = (df["arrival_delay_minutes"] >= 15).astype(int)
 
     X, numeric_features, categorical_features = prepare_features(df, schema)
-    y_regression = df["arrival_delay_minutes"]
-    y_classification = df["significant_delay"]
 
-    # Chronological split (assume df is sorted by date or has date column)
-    if "scheduled_departure" in df.columns:
-        df = df.sort_values("scheduled_departure")
-        split_idx = int(len(df) * 0.7)
-        val_idx = int(len(df) * 0.85)
+    # Ensure there is at least one sample
+    if len(X) == 0:
+        raise ValueError("No samples left after feature extraction. Check feature names in schema.")
 
-        X = X.loc[df.index]
-        y_regression = y_regression.loc[df.index]
-        y_classification = y_classification.loc[df.index]
+    # Chronological split (assume df has year/month/day_of_month -> convert to integer key)
+    df["date_key"] = df["year"].astype(str) + df["month"].astype(str).str.zfill(2) + df["day_of_month"].astype(str).str.zfill(2)
+    df = df.sort_values("date_key")
+    split_idx = int(len(df) * 0.7)
+    val_idx = int(len(df) * 0.85)
 
-        X_train = X.iloc[:split_idx]
-        X_val = X.iloc[split_idx:val_idx]
-        X_test = X.iloc[val_idx:]
+    X = X.loc[df.index]
+    y_regression = df["arrival_delay_minutes"].loc[df.index]
+    y_classification = df["significant_delay"].loc[df.index]
 
-        y_reg_train = y_regression.iloc[:split_idx]
-        y_reg_val = y_regression.iloc[split_idx:val_idx]
-        y_reg_test = y_regression.iloc[val_idx:]
+    X_train = X.iloc[:split_idx]
+    X_val = X.iloc[split_idx:val_idx]
+    X_test = X.iloc[val_idx:]
 
-        y_cls_train = y_classification.iloc[:split_idx]
-        y_cls_val = y_classification.iloc[split_idx:val_idx]
-        y_cls_test = y_classification.iloc[val_idx:]
-    else:
-        X_train, X_temp, y_reg_train, y_reg_temp, y_cls_train, y_cls_temp = train_test_split(
-            X, y_regression, y_classification, test_size=0.3, random_state=42
-        )
-        X_val, X_test, y_reg_val, y_reg_test, y_cls_val, y_cls_test = train_test_split(
-            X_temp, y_reg_temp, y_cls_temp, test_size=0.5, random_state=42
-        )
+    y_reg_train = y_regression.iloc[:split_idx]
+    y_reg_val = y_regression.iloc[split_idx:val_idx]
+    y_reg_test = y_regression.iloc[val_idx:]
+
+    y_cls_train = y_classification.iloc[:split_idx]
+    y_cls_val = y_classification.iloc[split_idx:val_idx]
+    y_cls_test = y_classification.iloc[val_idx:]
 
     # Preprocessing
     preprocessor = ColumnTransformer(
@@ -124,7 +124,7 @@ def train(df_path: str, output_path: str):
     y_cls_pred = cls_pipeline.predict(X_test)
 
     mae = mean_absolute_error(y_reg_test, y_reg_pred)
-    rmse = mean_squared_error(y_reg_test, y_reg_pred, squared=False)
+    rmse = mean_squared_error(y_reg_test, y_reg_pred) ** 0.5
     r2 = r2_score(y_reg_test, y_reg_pred)
 
     acc = accuracy_score(y_cls_test, y_cls_pred)
