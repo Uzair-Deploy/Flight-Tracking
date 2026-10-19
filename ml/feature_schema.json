@@ -14,10 +14,10 @@
   },
   "features": [
     {
-      "name": "op_unique_carrier",
+      "name": "carrier",
       "type": "categorical",
       "nullable": true,
-      "description": "Airline carrier IATA code (e.g., 9E, AA, UA)"
+      "description": "Airline IATA code (e.g., AI, 6E, UA)"
     },
     {
       "name": "origin",
@@ -32,33 +32,9 @@
       "description": "Destination airport IATA code"
     },
     {
-      "name": "crs_dep_time",
+      "name": "distance_km",
       "type": "numeric",
-      "nullable": true,
-      "min": 0,
-      "max": 2359,
-      "description": "Scheduled departure time in HHMM format"
-    },
-    {
-      "name": "crs_arr_time",
-      "type": "numeric",
-      "nullable": true,
-      "min": 0,
-      "max": 2359,
-      "description": "Scheduled arrival time in HHMM format"
-    },
-    {
-      "name": "crs_elapsed_time",
-      "type": "numeric",
-      "unit": "minutes",
-      "nullable": true,
-      "min": 0,
-      "description": "Scheduled elapsed time in minutes"
-    },
-    {
-      "name": "distance",
-      "type": "numeric",
-      "unit": "miles",
+      "unit": "km",
       "nullable": true,
       "min": 0,
       "max": 20000

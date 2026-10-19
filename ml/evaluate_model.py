@@ -32,14 +32,12 @@ def evaluate(model_path: str, test_csv: str):
 
     df = pd.read_csv(test_csv)
 
-    if "arr_delay" not in df.columns:
-        raise ValueError("Test CSV must contain 'arr_delay'")
-    df.rename(columns={"arr_delay": "arrival_delay_minutes"}, inplace=True)
+    if "arrival_delay_minutes" not in df.columns:
+        raise ValueError("Test CSV must contain 'arrival_delay_minutes'")
 
     if "status" in df.columns:
         df = df[~df["status"].isin(["cancelled", "diverted"])].copy()
 
-    df["arrival_delay_minutes"] = df["arrival_delay_minutes"].astype(float)
     df["significant_delay"] = (df["arrival_delay_minutes"] >= 15).astype(int)
 
     numeric_features = [f["name"] for f in schema["features"] if f["type"] == "numeric"]

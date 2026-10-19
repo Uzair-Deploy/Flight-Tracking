@@ -52,17 +52,19 @@ def train(df_path: str, output_path: str):
     df = df.sample(min(500, len(df)), random_state=42).reset_index(drop=True)
 
     # Target
-    if "arr_delay" not in df.columns:
-        raise ValueError("Dataset must contain 'arr_delay' column")
-    df.rename(columns={"arr_delay": "arrival_delay_minutes"}, inplace=True)
+    if "arrival_delay_minutes" not in df.columns:
+        raise ValueError("Dataset must contain 'arrival_delay_minutes' column")
 
     # Drop cancelled/diverted if present
     if "status" in df.columns:
         df = df[~df["status"].isin(["cancelled", "diverted"])].copy()
 
+<<<<<<< HEAD
     df["arrival_delay_minutes"] = df["arrival_delay_minutes"].astype(float)
     # Drop rows with missing target
     df = df.dropna(subset=["arrival_delay_minutes"])
+=======
+>>>>>>> parent of d0ac22f (Import data files)
     # Classification target
     df["significant_delay"] = (df["arrival_delay_minutes"] >= 15).astype(int)
 
