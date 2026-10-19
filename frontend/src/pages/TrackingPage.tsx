@@ -3,8 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { flightService, type FlightSearchParams } from "@/services/flight.service";
 import { airportService } from "@/services/airport.service";
 import { weatherService } from "@/services/weather.service";
+import { delayPredictionService } from "@/services/delayPredictionService";
 import { ApiError } from "@/services/api";
-import type { FlightDto, FlightTrackingDto, WeatherDto } from "@/types/api";
+import type { FlightDto, FlightTrackingDto, WeatherDto, DelayPredictionResponse } from "@/types/api";
 import { TrackingMap } from "@/components/tracking/TrackingMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +122,10 @@ export function TrackingPage() {
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
+  const [delayPrediction, setDelayPrediction] = useState<DelayPredictionResponse | null>(null);
+  const [loadingDelayPrediction, setLoadingDelayPrediction] = useState(false);
+  const [delayPredictionError, setDelayPredictionError] = useState<string | null>(null);
+
   const buildParams = (): FlightSearchParams => {
     const p: FlightSearchParams = {};
     if (flightIata.trim()) p.flight_iata = flightIata.trim();
@@ -227,6 +232,29 @@ export function TrackingPage() {
       setLoadingDetail(false);
       return;
     }
+
+    // Reset delay prediction state
+    setDelayPrediction(null);
+    setDelayPredictionError(null);
+    setLoadingDelayPrediction(true);
+
+    // Fetch delay prediction (non-blocking)
+    delayPredictionService
+      .getDelayPrediction(flightNumber)
+      .then((pred) => {
+        if (pred && pred.status === "AVAILABLE") {
+          setDelayPrediction(pred);
+        } else {
+          setDelayPredictionError("Prediction unavailable for this flight.");
+        }
+      })
+      .catch(() => {
+        setDelayPredictionError("Delay prediction service temporarily unavailable.");
+      })
+      .finally(() => {
+        setLoadingDelayPrediction(false);
+      });
+
     try {
       const [d, t] = await Promise.all([
         flightService.getByFlightNumber(flightNumber).catch(() => null),

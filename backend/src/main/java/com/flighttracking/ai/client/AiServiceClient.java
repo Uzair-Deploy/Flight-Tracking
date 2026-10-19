@@ -6,6 +6,8 @@ import com.flighttracking.ai.dto.AtcExplanationResponse;
 import com.flighttracking.ai.dto.ChatRequest;
 import com.flighttracking.ai.dto.ChatResponse;
 import com.flighttracking.ai.dto.RecommendationRequest;
+import com.flighttracking.dto.prediction.DelayPredictionRequest;
+import com.flighttracking.dto.prediction.DelayPredictionResponse;
 import com.flighttracking.exception.ExternalApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,5 +132,34 @@ public class AiServiceClient {
     // Backwards-compatible overload
     public Map<String, Object> recommend(RecommendationRequest request, String userId) {
         return recommend(request, userId, null);
+    }
+
+    public DelayPredictionResponse predictDelay(DelayPredictionRequest request, String userId, String requestId) {
+        try {
+            log.debug("Sending delay prediction request to AI service");
+            var builder = restClient.post()
+                    .uri("/api/predictions/delay")
+                    .header("X-User-Id", userId != null ? userId : "anonymous");
+            if (requestId != null && !requestId.isBlank()) {
+                builder = builder.header("X-Request-ID", requestId);
+            }
+            DelayPredictionResponse response = builder
+                    .body(request)
+                    .retrieve()
+                    .body(DelayPredictionResponse.class);
+
+            if (response == null) {
+                throw new ExternalApiException("Empty response from AI service", 502);
+            }
+            return response;
+        } catch (RestClientException e) {
+            log.error("AI service delay prediction request failed: {}", e.getMessage());
+            throw new ExternalApiException("AI service error: " + e.getMessage(), e);
+        }
+    }
+
+    // Backwards-compatible overload
+    public DelayPredictionResponse predictDelay(DelayPredictionRequest request, String userId) {
+        return predictDelay(request, userId, null);
     }
 }

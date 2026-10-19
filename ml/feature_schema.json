@@ -1,0 +1,86 @@
+{
+  "version": "1",
+  "target": {
+    "name": "arrival_delay_minutes",
+    "type": "regression",
+    "unit": "minutes",
+    "description": "Arrival delay in minutes (negative = early arrival)"
+  },
+  "classification_target": {
+    "name": "significant_delay",
+    "type": "binary",
+    "threshold_minutes": 15,
+    "description": "Binary: arrival delay >= 15 minutes"
+  },
+  "features": [
+    {
+      "name": "carrier",
+      "type": "categorical",
+      "nullable": true,
+      "description": "Airline IATA code (e.g., AI, 6E, UA)"
+    },
+    {
+      "name": "origin",
+      "type": "categorical",
+      "nullable": true,
+      "description": "Origin airport IATA code"
+    },
+    {
+      "name": "destination",
+      "type": "categorical",
+      "nullable": true,
+      "description": "Destination airport IATA code"
+    },
+    {
+      "name": "distance_km",
+      "type": "numeric",
+      "unit": "km",
+      "nullable": true,
+      "min": 0,
+      "max": 20000
+    },
+    {
+      "name": "airport_congestion",
+      "type": "numeric",
+      "nullable": true,
+      "min": 0.0,
+      "max": 1.0,
+      "description": "Historical congestion score [0,1]"
+    },
+    {
+      "name": "scheduled_hour_utc",
+      "type": "numeric",
+      "nullable": false,
+      "min": 0,
+      "max": 23,
+      "description": "Hour of scheduled departure (UTC)"
+    },
+    {
+      "name": "day_of_week",
+      "type": "numeric",
+      "nullable": false,
+      "min": 0,
+      "max": 6,
+      "description": "Day of week (0=Monday, 6=Sunday)"
+    },
+    {
+      "name": "month",
+      "type": "numeric",
+      "nullable": false,
+      "min": 1,
+      "max": 12
+    },
+    {
+      "name": "weather_precipitation_mm",
+      "type": "numeric",
+      "nullable": true,
+      "min": 0
+    },
+    {
+      "name": "weather_wind_speed_kmh",
+      "type": "numeric",
+      "nullable": true,
+      "min": 0
+    }
+  ]
+}

@@ -16,6 +16,7 @@ from app.api.recommendation import router as recommendation_router
 from app.api.memory import router as memory_router
 from app.api.atc import router as atc_router
 from app.api.observability import router as observability_router
+from app.api.predictions import router as predictions_router
 from app.observability.logging import setup_logging
 from app.observability.context import get_or_create_request_id, clear_request_id, get_request_id
 from app.observability import tracer
@@ -173,6 +174,7 @@ def create_app() -> FastAPI:
     app.include_router(memory_router, prefix="/api/ai")
     app.include_router(atc_router, prefix="/api/ai")
     app.include_router(observability_router, prefix="/api/ai")
+    app.include_router(predictions_router, prefix="/api")
 
     # Mount MCP server (SSE transport) at /mcp
     try:

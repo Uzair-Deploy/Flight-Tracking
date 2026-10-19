@@ -361,3 +361,12 @@ export interface AtcExplanationResponse {
   context: string[];
   limitations: string[];
 }
+
+// Backend: com.flighttracking.dto.prediction.DelayPredictionResponse
+export interface DelayPredictionResponse {
+  predictedArrivalDelayMinutes: number | null;
+  significantDelayProbability: number | null;
+  predictionGeneratedAt: string | null;
+  modelVersion: string | null;
+  status: string; // AVAILABLE | UNAVAILABLE
+}
