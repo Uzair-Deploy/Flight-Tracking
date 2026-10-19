@@ -49,13 +49,15 @@ def train(df_path: str, output_path: str):
     df = pd.read_csv(df_path)
 
     # Target
-    if "arrival_delay_minutes" not in df.columns:
-        raise ValueError("Dataset must contain 'arrival_delay_minutes' column")
+    if "arr_delay" not in df.columns:
+        raise ValueError("Dataset must contain 'arr_delay' column")
+    df.rename(columns={"arr_delay": "arrival_delay_minutes"}, inplace=True)
 
     # Drop cancelled/diverted if present
     if "status" in df.columns:
         df = df[~df["status"].isin(["cancelled", "diverted"])].copy()
 
+    df["arrival_delay_minutes"] = df["arrival_delay_minutes"].astype(float)
     # Classification target
     df["significant_delay"] = (df["arrival_delay_minutes"] >= 15).astype(int)
 
