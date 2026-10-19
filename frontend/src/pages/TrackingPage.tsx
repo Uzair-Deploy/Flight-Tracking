@@ -743,6 +743,85 @@ export function TrackingPage() {
                 )}
               </div>
 
+              {/* Delay Prediction – compact */}
+              <div className="glass-panel rounded-xl p-3.5">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3">
+                  <h3 className="text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground flex items-center gap-2">
+                    <Gauge className="size-3.5 text-primary" /> Delay Prediction
+                  </h3>
+                  {delayPrediction && (
+                    <span className={`text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                      delayPrediction.status === "AVAILABLE"
+                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                        : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                    }`}>
+                      {delayPrediction.status}
+                    </span>
+                  )}
+                </div>
+                {loadingDelayPrediction && (
+                  <div className="flex items-center justify-center py-6 gap-2">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    <span className="text-xs font-mono text-muted-foreground">Generating prediction…</span>
+                  </div>
+                )}
+                {!loadingDelayPrediction && delayPredictionError && (
+                  <div className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-5 text-center">
+                    <p className="text-xs text-muted-foreground">{delayPredictionError}</p>
+                  </div>
+                )}
+                {!loadingDelayPrediction && delayPrediction && delayPrediction.status === "AVAILABLE" && (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5 space-y-1">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                        <Clock className="size-3" /> Est. Arrival Delay
+                      </div>
+                      <div className="text-xl font-mono font-semibold text-white">
+                        {delayPrediction.predictedArrivalDelayMinutes != null
+                          ? `${delayPrediction.predictedArrivalDelayMinutes.toFixed(1)} min`
+                          : "—"}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">Estimate only — not confirmed</div>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5 space-y-1">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                        <AlertCircle className="size-3" /> Significant Delay Risk
+                      </div>
+                      <div className="text-xl font-mono font-semibold text-white">
+                        {delayPrediction.significantDelayProbability != null
+                          ? `${(delayPrediction.significantDelayProbability * 100).toFixed(0)}%`
+                          : "—"}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">Probability delay ≥ 15 min</div>
+                    </div>
+                  </div>
+                )}
+                {!loadingDelayPrediction && delayPrediction && delayPrediction.status !== "AVAILABLE" && (
+                  <p className="text-xs text-muted-foreground font-mono py-3 text-center">
+                    Prediction unavailable for this flight.
+                  </p>
+                )}
+                {!loadingDelayPrediction && !delayPrediction && !delayPredictionError && (
+                  <p className="text-xs text-muted-foreground font-mono py-3 text-center">
+                    Select a flight to load delay prediction.
+                  </p>
+                )}
+                {delayPrediction && delayPrediction.status === "AVAILABLE" && (
+                  <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-2 gap-2 text-[10px]">
+                    <div className="text-muted-foreground">Generated</div>
+                    <div className="font-mono text-white text-right">
+                      {delayPrediction.predictionGeneratedAt
+                        ? new Date(delayPrediction.predictionGeneratedAt).toLocaleString()
+                        : "—"}
+                    </div>
+                    <div className="text-muted-foreground">Model</div>
+                    <div className="font-mono text-white text-right">
+                      {delayPrediction.modelVersion ?? "—"}
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 
