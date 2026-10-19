@@ -41,6 +41,19 @@ async def lifespan(app: FastAPI):
     from app.mcp import register_mcp_tools
     register_mcp_tools()
 
+    # Load delay prediction model
+    from app.prediction.model_loader import get_model_loader
+    model_loader = get_model_loader()
+    if model_loader.load():
+        logger.info(
+            "Delay prediction model loaded successfully: %s",
+            model_loader.model_version,
+        )
+    else:
+        logger.error(
+            "Delay prediction model failed to load; predictions will be unavailable."
+        )
+
     yield
 
     # Clean up resources on shutdown

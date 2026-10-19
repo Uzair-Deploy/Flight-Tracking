@@ -24,7 +24,13 @@ class ModelLoader:
             return True
 
         if model_path is None:
-            model_path = os.getenv("DELAY_MODEL_PATH", "models/delay_model.pkl")
+            model_path = os.getenv("DELAY_MODEL_PATH")
+        if not model_path:
+            model_path = (
+                Path(__file__).resolve().parents[2]
+                / "models"
+                / "delay_model.pkl"
+            )
 
         path = Path(model_path)
         if not path.exists():
@@ -76,53 +82,61 @@ class ModelLoader:
             raise
 
     def _remap_features(self, features: dict) -> dict:
-        """Map API feature names (carrier, distance_km, etc.) to training feature names (op_unique_carrier, distance)."""
+        """Map API feature names to training feature names.
+        
+        Training features: crs_dep_time, crs_arr_time, crs_elapsed_time, distance, 
+        day_of_week, month, op_unique_carrier, origin
+        """
         mapped = {}
 
         # carrier -> op_unique_carrier
         if "carrier" in features and features["carrier"]:
             mapped["op_unique_carrier"] = str(features["carrier"]).upper()
         else:
-            # Default to a common carrier if missing
             mapped["op_unique_carrier"] = "9E"
 
-        # distance_km -> distance (in miles, as model was trained on miles)
+        # distanceKm -> distance (in miles, as model was trained on miles)
         if "distanceKm" in features and features["distanceKm"] is not None:
             mapped["distance"] = float(features["distanceKm"]) * 0.621371
         elif "distance" not in mapped:
             mapped["distance"] = 1000.0  # default ~1000 miles
 
-        # origin and destination pass through (same names)
+        # origin (same name)
         if "origin" in features and features["origin"]:
             mapped["origin"] = str(features["origin"]).upper()
-        if "destination" in features and features["destination"]:
-            mapped["destination"] = str(features["destination"]).upper()
 
-        # day_of_week and month: derive from scheduledDeparture if provided
+        # Derive time features from scheduledDeparture
         if "scheduledDeparture" in features and features["scheduledDeparture"]:
             try:
                 from datetime import datetime
                 dt = datetime.fromisoformat(str(features["scheduledDeparture"]))
                 mapped["day_of_week"] = dt.weekday()  # 0=Monday
                 mapped["month"] = dt.month
+                # crs_dep_time in HHMM format (e.g., 1430 for 14:30)
+                mapped["crs_dep_time"] = dt.hour * 100 + dt.minute
             except Exception:
                 mapped["day_of_week"] = 0
                 mapped["month"] = 1
+                mapped["crs_dep_time"] = 1200  # default noon
         else:
-            # Default: Monday, January if no date provided
             mapped["day_of_week"] = 0
             mapped["month"] = 1
+            mapped["crs_dep_time"] = 1200  # default noon
 
-        # carrier congestion if provided
-        if "airportCongestion" in features and features["airportCongestion"] is not None:
-            mapped["airport_congestion"] = float(features["airportCongestion"])
-
-        # Keep any other existing model features
-        for k, v in features.items():
-            if k not in mapped and k in ["modelVersion", "featureSchemaVersion"]:
-                pass  # skip metadata
-            elif k not in mapped:
-                mapped[k] = v
+        # Estimate crs_arr_time and crs_elapsed_time from typical flight duration
+        # We don't have actual scheduled arrival, so use typical duration based on distance
+        # Average ~500 mph => hours = distance/500, minutes = distance/500 * 60
+        distance_miles = mapped.get("distance", 1000.0)
+        estimated_hours = distance_miles / 500.0
+        estimated_minutes = int(estimated_hours * 60)
+        dep_time = mapped["crs_dep_time"]
+        dep_hours = dep_time // 100
+        dep_minutes = dep_time % 100
+        total_min = dep_hours * 60 + dep_minutes + estimated_minutes
+        arr_hours = (total_min // 60) % 24
+        arr_minutes = total_min % 60
+        mapped["crs_arr_time"] = arr_hours * 100 + arr_minutes
+        mapped["crs_elapsed_time"] = float(estimated_minutes)
 
         return mapped
 
