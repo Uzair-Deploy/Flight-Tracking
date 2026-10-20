@@ -97,7 +97,9 @@ class ModelLoader:
                 "significant_delay_probability": probability,
             }
         except Exception as e:
+            import traceback, sys
             logger.exception("Prediction failed: %s", e)
+            traceback.print_exc(file=sys.stdout)
             raise
 
     def _remap_features(self, features: dict) -> dict:

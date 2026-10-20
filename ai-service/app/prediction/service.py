@@ -38,7 +38,9 @@ class DelayPredictionService:
                 status="AVAILABLE",
             )
         except Exception as e:
+            import traceback, sys
             logger.exception("Prediction failed: %s", e)
+            traceback.print_exc(file=sys.stdout)
             return DelayPredictionResponse(
                 predictedArrivalDelayMinutes=0.0,
                 significantDelayProbability=0.0,
