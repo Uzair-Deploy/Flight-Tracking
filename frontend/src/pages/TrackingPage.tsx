@@ -204,7 +204,13 @@ export function TrackingPage() {
     if (air) setAirlineIata(air);
     if (dep) setDepIata(dep);
     if (arr) setArrIata(arr);
-    if ((q || dep || arr || air || st) && !results && !loadingSearch) {
+    if (
+  (q || dep || arr || air || st) &&
+  !results &&
+  !loadingSearch &&
+  !initialSearchStartedRef.current
+) {
+  initialSearchStartedRef.current = true;
       if (q) setFlightIata(q);
       const p: FlightSearchParams = {};
       if (q) p.flight_iata = q;
@@ -221,6 +227,28 @@ export function TrackingPage() {
   }, []);
 
   const handleSelect = async (f: FlightDto) => {
+    const flightNumber = f.flightIata ?? f.flightNumber ?? "";
+
+    if (!flightNumber) {
+      selectionRequestIdRef.current += 1;
+      inFlightSelectionRef.current = null;
+      setSelected(f);
+      setDetail(null);
+      setTracking(null);
+      setDetailError("No flight number available for details.");
+      setLoadingDetail(false);
+      return;
+    }
+
+    const selectionKey = flightNumber.replace(/\s+/g, "").toUpperCase();
+
+    if (inFlightSelectionRef.current === selectionKey) return;
+
+    const requestId = ++selectionRequestIdRef.current;
+    inFlightSelectionRef.current = selectionKey;
+    const isCurrentSelection = () =>
+      requestId === selectionRequestIdRef.current;
+
     setSelected(f);
     setDetail(null);
     setTracking(null);
@@ -231,12 +259,6 @@ export function TrackingPage() {
     setWeather(null);
     setWeatherError(null);
     setLoadingWeather(false);
-    const flightNumber = f.flightIata ?? f.flightNumber ?? "";
-    if (!flightNumber) {
-      setDetailError("No flight number available for details.");
-      setLoadingDetail(false);
-      return;
-    }
 
     // Reset delay prediction state
     setDelayPrediction(null);
@@ -247,6 +269,7 @@ export function TrackingPage() {
     delayPredictionService
       .getDelayPrediction(flightNumber)
       .then((pred) => {
+        if (!isCurrentSelection()) return;
         if (pred && pred.status === "AVAILABLE") {
           setDelayPrediction(pred);
         } else {
@@ -254,18 +277,23 @@ export function TrackingPage() {
         }
       })
       .catch(() => {
+        if (!isCurrentSelection()) return;
         setDelayPredictionError("Delay prediction service temporarily unavailable.");
       })
       .finally(() => {
+        if (!isCurrentSelection()) return;
         setLoadingDelayPrediction(false);
       });
 
     try {
-      const [d, t] = await Promise.all([
-        flightService.getByFlightNumber(flightNumber).catch(() => null),
-        flightService.getTracking(flightNumber).catch(() => null),
-      ]);
-      const resolvedDetail = d ?? f;
+      const t = await flightService
+        .getTracking(flightNumber)
+        .catch(() => null);
+
+      const resolvedDetail = f;
+
+      if (!isCurrentSelection()) return;
+
       setDetail(resolvedDetail);
       if (t) {
         setTracking(t);
@@ -274,11 +302,18 @@ export function TrackingPage() {
           setWeatherError(null);
           weatherService
             .getByCoordinates(t.latitude, t.longitude)
-            .then(setWeather)
+            .then((w) => {
+              if (!isCurrentSelection()) return;
+              setWeather(w);
+            })
             .catch(() => {
+              if (!isCurrentSelection()) return;
               setWeatherError("Weather data temporarily unavailable");
             })
-            .finally(() => setLoadingWeather(false));
+            .finally(() => {
+              if (!isCurrentSelection()) return;
+              setLoadingWeather(false);
+            });
         }
       } else {
         setTracking(null);
@@ -292,6 +327,7 @@ export function TrackingPage() {
           airportService
             .getByIata(depIataVal)
             .then((a) => {
+              if (!isCurrentSelection()) return;
               if (a.latitude != null && a.longitude != null) setDepCoords({ lat: a.latitude, lng: a.longitude });
             })
             .catch(() => {})
@@ -302,6 +338,7 @@ export function TrackingPage() {
           airportService
             .getByIata(arrIataVal)
             .then((a) => {
+              if (!isCurrentSelection()) return;
               if (a.latitude != null && a.longitude != null) setArrCoords({ lat: a.latitude, lng: a.longitude });
             })
             .catch(() => {})
@@ -312,7 +349,13 @@ export function TrackingPage() {
       if (e instanceof ApiError) setDetailError(e.message);
       else setDetailError("Failed to load flight details.");
     } finally {
-      setLoadingDetail(false);
+      if (isCurrentSelection()) {
+        setLoadingDetail(false);
+
+        if (inFlightSelectionRef.current === selectionKey) {
+          inFlightSelectionRef.current = null;
+        }
+      }
     }
   };
 
