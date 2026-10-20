@@ -45,12 +45,22 @@ class ModelLoader:
                 return False
 
             self._model = artifact.get("model")
+            self._classifier = artifact.get("classifier")
             self._model_version = artifact.get("model_version", "unknown")
             self._feature_schema_version = artifact.get("feature_schema_version", "1")
 
             if self._model is None:
                 logger.error("Model artifact missing 'model' key")
                 return False
+
+            # Store expected feature names for DataFrame column ordering
+            if hasattr(self._model, "feature_names_in_"):
+                self._feature_names = list(self._model.feature_names_in_)
+            else:
+                self._feature_names = [
+                    "crs_dep_time", "crs_arr_time", "crs_elapsed_time", "distance",
+                    "day_of_week", "month", "op_unique_carrier", "origin"
+                ]
 
             self._is_loaded = True
             logger.info("Loaded model version %s, feature schema version %s",
