@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { flightService, type FlightSearchParams } from "@/services/flight.service";
 import { airportService } from "@/services/airport.service";
@@ -95,6 +95,11 @@ function isAirborne(tracking: FlightTrackingDto | null, flight: FlightDto | null
 
 export function TrackingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Request guards to prevent race conditions
+  const initialSearchStartedRef = useRef(false);
+  const selectionRequestIdRef = useRef(0);
+  const inFlightSelectionRef = useRef<string | null>(null);
 
   const [flightIata, setFlightIata] = useState(searchParams.get("flight_iata") ?? "");
   const [depIata, setDepIata] = useState(searchParams.get("dep_iata") ?? "");
