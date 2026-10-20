@@ -32,9 +32,11 @@ class PredictionFeatures(BaseModel):
     def to_model_features(self) -> dict:
         """Convert to model feature dict."""
         features = {
-            "flight_number": self.flightNumber,
+            "flightNumber": self.flightNumber,
         }
 
+        if self.scheduledDeparture:
+            features["scheduledDeparture"] = self.scheduledDeparture
         if self.carrier:
             features["carrier"] = self.carrier
         if self.origin:
@@ -42,9 +44,9 @@ class PredictionFeatures(BaseModel):
         if self.destination:
             features["destination"] = self.destination
         if self.distanceKm is not None:
-            features["distance_km"] = self.distanceKm
+            features["distanceKm"] = self.distanceKm
         if self.airportCongestion is not None:
-            features["airport_congestion"] = self.airportCongestion
+            features["airportCongestion"] = self.airportCongestion
         if self.weatherFeatures is not None:
             for k, v in self.weatherFeatures.items():
                 features[f"weather_{k}"] = v
