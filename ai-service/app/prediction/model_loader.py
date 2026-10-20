@@ -2,6 +2,7 @@
 import os
 import logging
 import joblib
+import pandas as pd
 from typing import Any, Optional
 from pathlib import Path
 
@@ -78,14 +79,22 @@ class ModelLoader:
         model_features = self._remap_features(features)
 
         try:
-            delay = self._model.predict([model_features])[0]
-            proba = None
-            if hasattr(self._model, "predict_proba"):
-                proba = self._model.predict_proba([model_features])[0][1]  # probability of class 1 (delay >= 15)
+            import pandas as pd
+            frame = pd.DataFrame([model_features], columns=self._feature_names)
+            delay = float(self._model.predict(frame)[0])
+
+            probability = 0.0
+            if self._classifier is not None:
+                classes = list(self._classifier.classes_)
+                if 1 in classes:
+                    probabilities = self._classifier.predict_proba(frame)[0]
+                    probability = float(probabilities[classes.index(1)])
+            elif hasattr(self._model, "predict_proba"):
+                probability = float(self._model.predict_proba(frame)[0][1])
 
             return {
-                "predicted_arrival_delay_minutes": float(delay),
-                "significant_delay_probability": float(proba) if proba is not None else 0.0,
+                "predicted_arrival_delay_minutes": delay,
+                "significant_delay_probability": probability,
             }
         except Exception as e:
             logger.exception("Prediction failed: %s", e)
