@@ -12,6 +12,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.flighttracking.util.FlightNumberUtils;
 
@@ -22,6 +23,11 @@ public class AerodataboxClient {
 
     private final AerodataboxProperties properties;
     private final RestClient restClient;
+
+    private long nextAllowedRequestNanos = 0L;
+
+    private static final long MIN_REQUEST_INTERVAL_NANOS =
+            TimeUnit.MILLISECONDS.toNanos(1100);
 
     public AerodataboxClient(AerodataboxProperties properties, RestClient aerodataboxRestClient) {
         this.properties = properties;
@@ -106,19 +112,41 @@ public class AerodataboxClient {
 
     private <T> T executeGet(URI uri, Class<T> responseType) {
         if (properties.apiKey() == null || properties.apiKey().isBlank()) {
-            log.warn("AeroDataBox API key not configured - uri={}", uri);
+            throw new ExternalApiException(
+                    "AeroDataBox API key is not configured", 503);
         }
+
+        long waitNanos = nextAllowedRequestNanos - System.nanoTime();
+
+        if (waitNanos > 0) {
+            try {
+                TimeUnit.NANOSECONDS.sleep(waitNanos);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new ExternalApiException(
+                        "Interrupted while waiting for AeroDataBox rate limit", e);
+            }
+        }
+
+        // Reserve the next request slot before making this request.
+        nextAllowedRequestNanos =
+                System.nanoTime() + MIN_REQUEST_INTERVAL_NANOS;
+
         try {
             log.debug("Calling AeroDataBox: {}", uri);
-            T response = restClient.get()
+
+            return restClient.get()
                     .uri(uri)
                     .header("x-api-market-key", properties.apiKey())
                     .retrieve()
                     .body(responseType);
-            return response;
+
         } catch (Exception e) {
-            log.error("AeroDataBox request failed: {} - uri={}", e.getMessage(), uri);
-            throw new ExternalApiException("AeroDataBox API error: " + e.getMessage(), e);
+            log.error("AeroDataBox request failed: {} - uri={}",
+                    e.getMessage(), uri);
+
+            throw new ExternalApiException(
+                    "AeroDataBox API error: " + e.getMessage(), e);
         }
     }
 }
